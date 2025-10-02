@@ -10,6 +10,7 @@
 #define SERIAL_USART_RX_PIN GP1   // USART RX pin
 #define SERIAL_USART_PIN_SWAP     // Swap TX and RX pins if keyboard is master halve.
 #define EE_HANDS // Split handedness via eeprom
+#define OS_DETECTION_SINGLE_REPORT
 
 #define RP2040_BOOTLOADER_DOUBLE_TAP_RESET
 #define RP2040_BOOTLOADER_DOUBLE_TAP_RESET_TIMEOUT 500U
