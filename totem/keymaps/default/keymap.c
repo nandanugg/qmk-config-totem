@@ -135,10 +135,10 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
                                               _______,  _______,  _______,   _______,  _______,   _______
     ),
     [2] = LAYOUT(
-		          KC_GRAVE, KC_F1,    KC_F2,    KC_F3,    KC_F10,    KC_MPLY,  KC_MSTP,   KC_MINUS,  KC_EQUAL, KC_BSPC,
-           	          _______,  KC_F4,    KC_F5,    KC_F6,    KC_F11,    _______,  _______,   _______,   _______,  KC_KB_VOLUME_UP,
-        _______,          _______,  KC_F7,    KC_F8,    KC_F9,    KC_F12,    KC_MNXT,  KC_MPRV,   _______,   _______,  KC_KB_VOLUME_DOWN,   _______,
-                                              _______,  _______,  _______,   _______,  _______,   _______
+		          KC_GRAVE, KC_F1,    KC_F2,    KC_F3,    KC_F10,    KC_MPLY,  KC_MSTP,   KC_MINUS,          KC_EQUAL,           KC_BSPC,
+           	          _______,  KC_F4,    KC_F5,    KC_F6,    KC_F11,    _______,  _______,   KC_KB_VOLUME_UP,   KC_KB_VOLUME_DOWN,  _______,
+        _______,          _______,  KC_F7,    KC_F8,    KC_F9,    KC_F12,    KC_MNXT,  KC_MPRV,   _______,           _______,            _______,   _______,
+                                              _______,  MAC_ALT,  MAC_CMD,   _______,  _______,   _______
     ),
     [3] = LAYOUT(
 		          _______,  _______,  _______,  _______,  _______,    _______, _______,   _______, _______,  _______,
