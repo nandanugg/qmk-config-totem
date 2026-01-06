@@ -26,7 +26,13 @@ Run the `qmk` setup if you haven't yet
 ```
 qmk setup
 ```
+them, initialize
 ```
-qmk new-keyboard
+make init
 ```
-give the name `totem` and the microcontroller to be `RP2040`, you can leave the rest default
+
+## For WSL
+1. You don't need to run `qmk setup`
+2. Use: [ https://wsl.qmk.fm/guide ]
+3. Because the tool can't leverage this makefile, you need to copy & paste the commands from the (makefile)[./makefile] in order to flash left/right keyboard
+

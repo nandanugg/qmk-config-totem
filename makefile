@@ -5,6 +5,5 @@ compile:
 	qmk compile -km default
 flash-l:
 	qmk flash -km default -bl uf2-split-left
-
 flash-r:
 	qmk flash -km default -bl uf2-split-right
