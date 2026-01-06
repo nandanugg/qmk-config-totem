@@ -21,11 +21,12 @@ TOTEM is a 38 key column-staggered split keyboard running [QMK](https://docs.qmk
 
 ## HOW TO USE
 
-Place the totem folder from this repository in the keyboards folder of your qmk installation.\
-Then use this command in QMK MSYS to create the firmware.
-
-`qmk compile -kb totem -km default`
-
-If you use just a random keymap to test you can use the `totem_default.uf2` which you can find in the root of the repository.
-
-See the [build environment setup](https://docs.qmk.fm/#/getting_started_build_tools) for more information. If you never used QMK, you can start with the [Newbs Guide](https://docs.qmk.fm/#/newbs).
+Run the `qmk` setup if you haven't yet
+> Before running this, make sure you already installed `dos2unix`
+```
+qmk setup
+```
+```
+qmk new-keyboard
+```
+give the name `totem` and the microcontroller to be `RP2040`, you can leave the rest default
