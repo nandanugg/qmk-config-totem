@@ -1,0 +1,14 @@
+WSL detected, using Windows symlink...
+
+
+    Directory: C:\Users\Nanda\qmk_firmware\keyboards
+
+
+Mode                 LastWriteTime         Length Name                                                                                   
+----                 -------------         ------ ----                                                                                   
+d----l         1/24/2026  12:49 PM                totem                                                                                  
+
+
+qmk config user.keyboard=totem
+user.keyboard: totem -> totem
+Ψ Wrote configuration to C:/Users/Nanda/AppData/Local/QMK.EXE/qmk.exe/qmk.exe.ini
