@@ -1,5 +1,7 @@
+KEYBOARD_DEST := $$HOME/qmk_firmware/keyboards/totem
+
 init:
-	sudo ln -s $(pwd)/totem ~/qmk_firmware/keyboards/
+	@ln -sfn $(shell pwd)/totem $(KEYBOARD_DEST)
 	qmk config user.keyboard=totem
 compile:
 	qmk compile -km default
