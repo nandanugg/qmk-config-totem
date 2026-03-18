@@ -83,13 +83,52 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 // └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 // ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘
 
+static bool ver_alt_active = false;
+static bool ver_alt_swapped = false;
+static bool ver_alt_from_layer3 = false;
+static bool lsft_active = false;
+
+static bool is_windows(void) {
+    os_variant_t os = detected_host_os();
+    return os != OS_MACOS && os != OS_IOS;
+}
+
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    if (ver_alt_active && !ver_alt_from_layer3 && is_windows()) {
+        switch (keycode) {
+            case KC_X:
+            case KC_C:
+            case KC_V:
+                if (record->event.pressed) {
+                    if (!ver_alt_swapped) {
+                        unregister_code(ver_alt_keycode());
+                        register_code(KC_LCTL);
+                        ver_alt_swapped = true;
+                    }
+                    register_code(keycode);
+                } else {
+                    unregister_code(keycode);
+                }
+                return false;
+        }
+    }
+
     switch (keycode) {
         case VER_ALT:
             if (record->event.pressed) {
+                ver_alt_active = true;
+                ver_alt_swapped = false;
+                ver_alt_from_layer3 = lsft_active;
                 register_code(ver_alt_keycode());
             } else {
-                unregister_code(ver_alt_keycode());
+                ver_alt_active = false;
+                ver_alt_from_layer3 = false;
+                if (ver_alt_swapped) {
+                    unregister_code(KC_LCTL);
+                    ver_alt_swapped = false;
+                } else {
+                    unregister_code(ver_alt_keycode());
+                }
             }
             return false;
         case VER_ALT_MOD:
@@ -101,10 +140,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return false;
         case VER_LSFT_L3:
             if (record->event.pressed) {
+                lsft_active = true;
                 register_code(KC_LSFT);
                 layer_on(3);
             } else {
                 layer_off(3);
+                lsft_active = false;
                 unregister_code(KC_LSFT);
             }
             return false;
