@@ -19,7 +19,29 @@
 
 enum custom_keycodes {
 	QWERTY = SAFE_RANGE,
+	VER_ALT,
+	VER_ALT_MOD,
 };
+
+// ┌─────────────────────────────────────────────────┐
+// │ d e f i n e   O S   d e t e c t i o n           │
+// └─────────────────────────────────────────────────┘
+
+#include "os_detection.h"
+
+static uint16_t ver_alt_keycode(void) {
+    if (detected_host_os() == OS_MACOS || detected_host_os() == OS_IOS) {
+        return KC_LGUI;
+    }
+    return KC_LALT;
+}
+
+static uint16_t ver_alt_mod_keycode(void) {
+    if (detected_host_os() == OS_MACOS || detected_host_os() == OS_IOS) {
+        return KC_LALT;
+    }
+    return KC_LGUI;
+}
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 // │ K E Y M A P S                                                                                                          │
@@ -30,8 +52,8 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 [0] = LAYOUT(
               KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,                      KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,
               KC_A,    KC_S,    KC_D,    KC_F,    KC_G,                      KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN,
-      KC_LSFT, KC_Z,    KC_X,    KC_C,    KC_V,    MT(MOD_LGUI, KC_B),       KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_ENT,
-                                 KC_LCTL, KC_LALT, KC_SPC,            KC_SPC,  MO(1),   MO(2)
+      LT(3, KC_LSFT), KC_Z,    KC_X,    KC_C,    KC_V,    MT(MOD_LGUI, KC_B),       KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_ENT,
+                                 KC_LCTL, VER_ALT, KC_SPC,         KC_SPC,  MO(1),   MO(2)
     ),
 
     [1] = LAYOUT(
@@ -46,19 +68,39 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
               _______, KC_F4,   KC_F5,   KC_F6,   KC_F11,                     KC_HOME, KC_PGDN, KC_PGUP,  KC_END,  _______,
       _______, _______, KC_F7,   KC_F8,   KC_F9,   KC_F12,                     _______, _______, _______, _______, _______, _______,
                                  _______, _______, _______,            _______, _______, _______
-    )
-    // [3] = LAYOUT(
-    //         _______,  _______,  _______,  _______,  _______,    _______, _______,   _______, _______,  _______,
-    //        	          _______,  _______,  _______,  _______,  _______,    _______, _______,   _______, _______,  _______,
-    //     _______,          _______,  _______,  _______,  _______,  _______,    _______, _______,   _______, _______,  _______,   _______,
-    //                                           _______,  KC_LALT,  KC_LGUI,   _______,  _______,   _______
-    // ),
+    ),
+    [3] = LAYOUT(
+            _______,  _______,  _______,  _______,  _______,    _______, _______,   _______, _______,  _______,
+                      _______,  _______,  _______,  _______,  _______,    _______, _______,   _______, _______,  _______,
+        _______,          _______,  _______,  _______,  _______,  _______,    _______, _______,   _______, _______,  _______,   _______,
+                                              _______,  VER_ALT_MOD,  VER_ALT,   _______,  _______,   _______
+    ),
 };
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 // │ M A C R O S                                                                                                            │
 // └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 // ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘
+
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    switch (keycode) {
+        case VER_ALT:
+            if (record->event.pressed) {
+                register_code(ver_alt_keycode());
+            } else {
+                unregister_code(ver_alt_keycode());
+            }
+            return false;
+        case VER_ALT_MOD:
+            if (record->event.pressed) {
+                register_code(ver_alt_mod_keycode());
+            } else {
+                unregister_code(ver_alt_mod_keycode());
+            }
+            return false;
+    }
+    return true;
+}
 
 /*
   ╺━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╸
