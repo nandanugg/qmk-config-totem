@@ -96,6 +96,7 @@ static bool is_windows(void) {
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (ver_alt_active && !ver_alt_from_layer3 && is_windows()) {
         switch (keycode) {
+            case KC_A:
             case KC_X:
             case KC_C:
             case KC_V:
