@@ -100,6 +100,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             case KC_X:
             case KC_C:
             case KC_V:
+            case KC_T:
+            case KC_W:
+            case KC_Z:
                 if (record->event.pressed) {
                     if (!ver_alt_swapped) {
                         unregister_code(ver_alt_keycode());
