@@ -22,6 +22,7 @@ enum custom_keycodes {
 	VER_ALT,
 	VER_ALT_MOD,
 	VER_LSFT_L3,
+	VER_CTRL,
 };
 
 // ┌─────────────────────────────────────────────────┐
@@ -34,7 +35,7 @@ static uint16_t ver_alt_keycode(void) {
     if (detected_host_os() == OS_MACOS || detected_host_os() == OS_IOS) {
         return KC_LGUI;
     }
-    return KC_LALT;
+    return KC_LCTL;
 }
 
 static uint16_t ver_alt_mod_keycode(void) {
@@ -42,6 +43,13 @@ static uint16_t ver_alt_mod_keycode(void) {
         return KC_LALT;
     }
     return KC_LGUI;
+}
+
+static uint16_t ver_ctrl_keycode(void) {
+    if (detected_host_os() == OS_MACOS || detected_host_os() == OS_IOS) {
+        return KC_LCTL;
+    }
+    return KC_LALT;
 }
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -54,7 +62,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
               KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,                      KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,
               KC_A,    KC_S,    KC_D,    KC_F,    KC_G,                      KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN,
       VER_LSFT_L3, KC_Z,    KC_X,    KC_C,    KC_V,    MT(MOD_LGUI, KC_B),       KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_ENT,
-                                 KC_LCTL, VER_ALT, KC_SPC,         KC_SPC,  MO(1),   MO(2)
+                                 VER_CTRL, VER_ALT, KC_SPC,         KC_SPC,  MO(1),   MO(2)
     ),
 
     [1] = LAYOUT(
@@ -83,37 +91,80 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 // └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 // ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘
 
-static bool ver_alt_active = false;
-static bool ver_alt_swapped = false;
-static bool ver_alt_from_layer3 = false;
 static bool lsft_active = false;
+static bool ver_alt_active = false;
+static bool ver_alt_tab_swapped = false;
+static bool ver_ctrl_active = false;
+static bool ver_ctrl_swapped = false;
 
-static bool is_windows(void) {
-    os_variant_t os = detected_host_os();
-    return os != OS_MACOS && os != OS_IOS;
+static bool is_mac(void) {
+    return detected_host_os() == OS_MACOS || detected_host_os() == OS_IOS;
 }
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-    if (ver_alt_active && !ver_alt_from_layer3 && is_windows()) {
+    if (ver_alt_active && !is_mac()) {
+        uint16_t alt_remap = KC_NO;
         switch (keycode) {
-            case KC_A:
-            case KC_X:
-            case KC_C:
-            case KC_V:
-            case KC_T:
-            case KC_W:
-            case KC_Z:
-                if (record->event.pressed) {
-                    if (!ver_alt_swapped) {
-                        unregister_code(ver_alt_keycode());
-                        register_code(KC_LCTL);
-                        ver_alt_swapped = true;
-                    }
-                    register_code(keycode);
-                } else {
-                    unregister_code(keycode);
+            case KC_TAB: alt_remap = KC_TAB; break;
+            case KC_Q:   alt_remap = KC_F4;  break;
+        }
+        if (alt_remap != KC_NO) {
+            if (record->event.pressed) {
+                if (!ver_alt_tab_swapped) {
+                    unregister_code(KC_LCTL);
+                    register_code(KC_LALT);
+                    ver_alt_tab_swapped = true;
                 }
-                return false;
+                register_code(alt_remap);
+            } else {
+                unregister_code(alt_remap);
+            }
+            return false;
+        }
+
+        uint16_t arrow_remap = KC_NO;
+        bool arrow_keep_ctrl = false;
+        switch (keycode) {
+            case KC_LEFT:  arrow_remap = KC_HOME; break;
+            case KC_RIGHT: arrow_remap = KC_END;  break;
+            case KC_UP:    arrow_remap = KC_HOME; arrow_keep_ctrl = true; break;
+            case KC_DOWN:  arrow_remap = KC_END;  arrow_keep_ctrl = true; break;
+        }
+        if (arrow_remap != KC_NO) {
+            if (record->event.pressed) {
+                if (!arrow_keep_ctrl) {
+                    unregister_code(KC_LCTL);
+                }
+                register_code(arrow_remap);
+            } else {
+                unregister_code(arrow_remap);
+                if (!arrow_keep_ctrl) {
+                    register_code(KC_LCTL);
+                }
+            }
+            return false;
+        }
+    }
+
+    if (ver_ctrl_active && !is_mac()) {
+        uint16_t ctrl_remap = KC_NO;
+        switch (keycode) {
+            case KC_LEFT:  ctrl_remap = KC_LEFT; break;
+            case KC_RIGHT: ctrl_remap = KC_RIGHT; break;
+            case KC_BSPC:  ctrl_remap = KC_BSPC; break;
+        }
+        if (ctrl_remap != KC_NO) {
+            if (record->event.pressed) {
+                if (!ver_ctrl_swapped) {
+                    unregister_code(KC_LALT);
+                    register_code(KC_LCTL);
+                    ver_ctrl_swapped = true;
+                }
+                register_code(ctrl_remap);
+            } else {
+                unregister_code(ctrl_remap);
+            }
+            return false;
         }
     }
 
@@ -121,15 +172,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case VER_ALT:
             if (record->event.pressed) {
                 ver_alt_active = true;
-                ver_alt_swapped = false;
-                ver_alt_from_layer3 = lsft_active;
+                ver_alt_tab_swapped = false;
                 register_code(ver_alt_keycode());
             } else {
                 ver_alt_active = false;
-                ver_alt_from_layer3 = false;
-                if (ver_alt_swapped) {
-                    unregister_code(KC_LCTL);
-                    ver_alt_swapped = false;
+                if (ver_alt_tab_swapped) {
+                    unregister_code(KC_LALT);
+                    ver_alt_tab_swapped = false;
                 } else {
                     unregister_code(ver_alt_keycode());
                 }
@@ -140,6 +189,21 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 register_code(ver_alt_mod_keycode());
             } else {
                 unregister_code(ver_alt_mod_keycode());
+            }
+            return false;
+        case VER_CTRL:
+            if (record->event.pressed) {
+                ver_ctrl_active = true;
+                ver_ctrl_swapped = false;
+                register_code(ver_ctrl_keycode());
+            } else {
+                ver_ctrl_active = false;
+                if (ver_ctrl_swapped) {
+                    unregister_code(KC_LCTL);
+                    ver_ctrl_swapped = false;
+                } else {
+                    unregister_code(ver_ctrl_keycode());
+                }
             }
             return false;
         case VER_LSFT_L3:

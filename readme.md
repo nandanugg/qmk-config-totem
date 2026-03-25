@@ -22,7 +22,7 @@ TOTEM is a 38 key column-staggered split keyboard running [QMK](https://docs.qmk
 ## HOW TO USE
 
 Run the `qmk` setup if you haven't yet
-> Before running this, make sure you already installed `dos2unix`
+> Before running this, make sure you already installed `dos2unix` and `diffutils`
 ```
 qmk setup
 ```
