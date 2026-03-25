@@ -112,9 +112,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (record->event.pressed) {
                 if (!ver_alt_tab_swapped) {
                     unregister_code(KC_LCTL);
+                    wait_ms(10);
                     register_code(KC_LALT);
                     ver_alt_tab_swapped = true;
                 }
+                wait_ms(10);
                 register_code(alt_remap);
             } else {
                 unregister_code(alt_remap);
@@ -135,12 +137,35 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 if (!arrow_keep_ctrl) {
                     unregister_code(KC_LCTL);
                 }
+                wait_ms(10);
                 register_code(arrow_remap);
             } else {
                 unregister_code(arrow_remap);
                 if (!arrow_keep_ctrl) {
+                    wait_ms(10);
                     register_code(KC_LCTL);
                 }
+            }
+            return false;
+        }
+
+        if (keycode == KC_BSPC) {
+            if (record->event.pressed) {
+                unregister_code(KC_LCTL);
+                wait_ms(10);
+                register_code(KC_HOME);
+                unregister_code(KC_HOME);
+                wait_ms(10);
+                register_code(KC_LSFT);
+                wait_ms(10);
+                register_code(KC_END);
+                unregister_code(KC_END);
+                unregister_code(KC_LSFT);
+                wait_ms(10);
+                register_code(KC_DEL);
+                unregister_code(KC_DEL);
+                wait_ms(10);
+                register_code(KC_LCTL);
             }
             return false;
         }
@@ -156,10 +181,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         if (ctrl_remap != KC_NO) {
             if (record->event.pressed) {
                 if (!ver_ctrl_swapped) {
+                    register_code(KC_NO);
+                    unregister_code(KC_NO);
                     unregister_code(KC_LALT);
+                    wait_ms(10);
                     register_code(KC_LCTL);
                     ver_ctrl_swapped = true;
                 }
+                wait_ms(10);
                 register_code(ctrl_remap);
             } else {
                 unregister_code(ctrl_remap);
@@ -173,10 +202,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (record->event.pressed) {
                 ver_alt_active = true;
                 ver_alt_tab_swapped = false;
+                wait_ms(10);
                 register_code(ver_alt_keycode());
             } else {
                 ver_alt_active = false;
                 if (ver_alt_tab_swapped) {
+                    register_code(KC_NO);
+                    unregister_code(KC_NO);
                     unregister_code(KC_LALT);
                     ver_alt_tab_swapped = false;
                 } else {
@@ -186,6 +218,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return false;
         case VER_ALT_MOD:
             if (record->event.pressed) {
+                wait_ms(10);
                 register_code(ver_alt_mod_keycode());
             } else {
                 unregister_code(ver_alt_mod_keycode());
@@ -195,6 +228,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (record->event.pressed) {
                 ver_ctrl_active = true;
                 ver_ctrl_swapped = false;
+                wait_ms(10);
                 register_code(ver_ctrl_keycode());
             } else {
                 ver_ctrl_active = false;
@@ -202,6 +236,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     unregister_code(KC_LCTL);
                     ver_ctrl_swapped = false;
                 } else {
+                    if (!is_mac()) {
+                        register_code(KC_NO);
+                        unregister_code(KC_NO);
+                    }
                     unregister_code(ver_ctrl_keycode());
                 }
             }
@@ -209,6 +247,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case VER_LSFT_L3:
             if (record->event.pressed) {
                 lsft_active = true;
+                wait_ms(10);
                 register_code(KC_LSFT);
                 layer_on(3);
             } else {
