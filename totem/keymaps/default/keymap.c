@@ -181,8 +181,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         if (ctrl_remap != KC_NO) {
             if (record->event.pressed) {
                 if (!ver_ctrl_swapped) {
-                    register_code(KC_NO);
-                    unregister_code(KC_NO);
+                    register_code(KC_F24);
+                    unregister_code(KC_F24);
                     unregister_code(KC_LALT);
                     wait_ms(10);
                     register_code(KC_LCTL);
@@ -207,8 +207,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             } else {
                 ver_alt_active = false;
                 if (ver_alt_tab_swapped) {
-                    register_code(KC_NO);
-                    unregister_code(KC_NO);
+                    register_code(KC_F24);
+                    unregister_code(KC_F24);
                     unregister_code(KC_LALT);
                     ver_alt_tab_swapped = false;
                 } else {
@@ -237,8 +237,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     ver_ctrl_swapped = false;
                 } else {
                     if (!is_mac()) {
-                        register_code(KC_NO);
-                        unregister_code(KC_NO);
+                        register_code(KC_F24);
+                        unregister_code(KC_F24);
                     }
                     unregister_code(ver_ctrl_keycode());
                 }
