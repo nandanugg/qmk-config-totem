@@ -45,12 +45,6 @@ static uint16_t ver_alt_mod_keycode(void) {
     return KC_LGUI;
 }
 
-static uint16_t ver_ctrl_keycode(void) {
-    if (detected_host_os() == OS_MACOS || detected_host_os() == OS_IOS) {
-        return KC_LCTL;
-    }
-    return KC_LALT;
-}
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 // │ K E Y M A P S                                                                                                          │
@@ -95,189 +89,133 @@ static bool lsft_active = false;
 static bool ver_alt_active = false;
 static bool ver_alt_tab_swapped = false;
 static bool ver_ctrl_active = false;
-static bool ver_ctrl_swapped = false;
+static bool ver_alt_mod_active = false;
 
 static bool is_mac(void) {
     return detected_host_os() == OS_MACOS || detected_host_os() == OS_IOS;
 }
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-    if (ver_alt_active && !is_mac()) {
-        uint16_t alt_remap = KC_NO;
-        switch (keycode) {
-            case KC_TAB: alt_remap = KC_TAB; break;
-            case KC_Q:   alt_remap = KC_F4;  break;
-        }
-        if (alt_remap != KC_NO) {
+   if (ver_alt_mod_active && lsft_active && !is_mac()) {
+      switch (keycode) {
+         case KC_LEFT:
+         case KC_RIGHT:
+         case KC_UP:
+         case KC_DOWN:
             if (record->event.pressed) {
-                if (!ver_alt_tab_swapped) {
-                    unregister_code(KC_LCTL);
-                    wait_ms(10);
-                    register_code(KC_LALT);
-                    ver_alt_tab_swapped = true;
-                }
-                wait_ms(10);
-                register_code(alt_remap);
+               unregister_code(ver_alt_mod_keycode());
+               wait_ms(10);
+               register_code(KC_LCTL);
+               wait_ms(10);
+               register_code(keycode);
             } else {
-                unregister_code(alt_remap);
+               unregister_code(keycode);
+               unregister_code(KC_LCTL);
+               wait_ms(10);
+               register_code(ver_alt_mod_keycode());
             }
             return false;
-        }
+      }
+   }
 
-        uint16_t arrow_remap = KC_NO;
-        bool arrow_keep_ctrl = false;
-        switch (keycode) {
-            case KC_LEFT:  arrow_remap = KC_HOME; break;
-            case KC_RIGHT: arrow_remap = KC_END;  break;
-            case KC_UP:    arrow_remap = KC_HOME; arrow_keep_ctrl = true; break;
-            case KC_DOWN:  arrow_remap = KC_END;  arrow_keep_ctrl = true; break;
-        }
-        if (arrow_remap != KC_NO) {
+   if (ver_alt_active && !is_mac()) {
+      uint16_t alt_remap = KC_NO;
+      switch (keycode) {
+         case KC_TAB:   alt_remap = KC_TAB;   break;
+         case KC_Q:     alt_remap = KC_F4;    break;
+         case KC_LEFT:  alt_remap = KC_LEFT;  break;
+         case KC_RIGHT: alt_remap = KC_RIGHT; break;
+         case KC_UP:    alt_remap = KC_UP;    break;
+         case KC_DOWN:  alt_remap = KC_DOWN;  break;
+      }
+      if (alt_remap != KC_NO) {
+         if (lsft_active && (keycode == KC_LEFT || keycode == KC_RIGHT)) {
+            uint16_t home_end = (keycode == KC_LEFT) ? KC_HOME : KC_END;
             if (record->event.pressed) {
-                if (!arrow_keep_ctrl) {
-                    unregister_code(KC_LCTL);
-                }
-                wait_ms(10);
-                register_code(arrow_remap);
+               unregister_code(KC_LCTL);
+               wait_ms(10);
+               register_code(home_end);
             } else {
-                unregister_code(arrow_remap);
-                if (!arrow_keep_ctrl) {
-                    wait_ms(10);
-                    register_code(KC_LCTL);
-                }
+               unregister_code(home_end);
+               wait_ms(10);
+               register_code(KC_LCTL);
             }
             return false;
-        }
+         }
+         if (record->event.pressed) {
+            if (!ver_alt_tab_swapped) {
+               unregister_code(KC_LCTL);
+               wait_ms(10);
+               register_code(KC_LALT);
+               ver_alt_tab_swapped = true;
+            }
+            wait_ms(10);
+            register_code(alt_remap);
+         } else {
+            unregister_code(alt_remap);
+         }
+         return false;
+      }
+   }
 
-        if (keycode == KC_BSPC) {
+   switch (keycode) {
+      case VER_ALT:
+         if (ver_ctrl_active) {
             if (record->event.pressed) {
-                unregister_code(KC_LCTL);
-                wait_ms(10);
-                register_code(KC_HOME);
-                unregister_code(KC_HOME);
-                wait_ms(10);
-                register_code(KC_LSFT);
-                wait_ms(10);
-                register_code(KC_END);
-                unregister_code(KC_END);
-                unregister_code(KC_LSFT);
-                wait_ms(10);
-                register_code(KC_DEL);
-                unregister_code(KC_DEL);
-                wait_ms(10);
-                register_code(KC_LCTL);
-            }
-            return false;
-        }
-    }
-
-    if (ver_ctrl_active && !is_mac()) {
-        uint16_t ctrl_remap = KC_NO;
-        switch (keycode) {
-            case KC_LEFT:  ctrl_remap = KC_LEFT; break;
-            case KC_RIGHT: ctrl_remap = KC_RIGHT; break;
-            case KC_BSPC:  ctrl_remap = KC_BSPC; break;
-        }
-        if (ctrl_remap != KC_NO) {
-            if (record->event.pressed) {
-                if (!ver_ctrl_swapped) {
-                    register_code(KC_F24);
-                    unregister_code(KC_F24);
-                    unregister_code(KC_LALT);
-                    wait_ms(10);
-                    register_code(KC_LCTL);
-                    ver_ctrl_swapped = true;
-                }
-                wait_ms(10);
-                register_code(ctrl_remap);
+               register_code(KC_LALT);
             } else {
-                unregister_code(ctrl_remap);
+               unregister_code(KC_LALT);
             }
             return false;
-        }
-    }
-
-    switch (keycode) {
-        case VER_ALT:
-            if (record->event.pressed) {
-                ver_alt_active = true;
-                ver_alt_tab_swapped = false;
-                wait_ms(10);
-                register_code(ver_alt_keycode());
+         }
+         if (record->event.pressed) {
+            ver_alt_active = true;
+            ver_alt_tab_swapped = false;
+            wait_ms(10);
+            register_code(ver_alt_keycode());
+         } else {
+            ver_alt_active = false;
+            if (ver_alt_tab_swapped) {
+               register_code(KC_F24);
+               unregister_code(KC_F24);
+               unregister_code(KC_LALT);
+               ver_alt_tab_swapped = false;
             } else {
-                ver_alt_active = false;
-                if (ver_alt_tab_swapped) {
-                    register_code(KC_F24);
-                    unregister_code(KC_F24);
-                    unregister_code(KC_LALT);
-                    ver_alt_tab_swapped = false;
-                } else {
-                    unregister_code(ver_alt_keycode());
-                }
+               unregister_code(ver_alt_keycode());
             }
-            return false;
-        case VER_ALT_MOD:
-            if (record->event.pressed) {
-                wait_ms(10);
-                register_code(ver_alt_mod_keycode());
-            } else {
-                unregister_code(ver_alt_mod_keycode());
-            }
-            return false;
-        case VER_CTRL:
-            if (record->event.pressed) {
-                ver_ctrl_active = true;
-                ver_ctrl_swapped = false;
-                wait_ms(10);
-                register_code(ver_ctrl_keycode());
-            } else {
-                ver_ctrl_active = false;
-                if (ver_ctrl_swapped) {
-                    unregister_code(KC_LCTL);
-                    ver_ctrl_swapped = false;
-                } else {
-                    if (!is_mac()) {
-                        register_code(KC_F24);
-                        unregister_code(KC_F24);
-                    }
-                    unregister_code(ver_ctrl_keycode());
-                }
-            }
-            return false;
-        case VER_LSFT_L3:
-            if (record->event.pressed) {
-                lsft_active = true;
-                wait_ms(10);
-                register_code(KC_LSFT);
-                layer_on(3);
-            } else {
-                layer_off(3);
-                lsft_active = false;
-                unregister_code(KC_LSFT);
-            }
-            return false;
-    }
-    return true;
+         }
+         return false;
+      case VER_ALT_MOD:
+         if (record->event.pressed) {
+            ver_alt_mod_active = true;
+            wait_ms(10);
+            register_code(ver_alt_mod_keycode());
+         } else {
+            ver_alt_mod_active = false;
+            unregister_code(ver_alt_mod_keycode());
+         }
+         return false;
+      case VER_CTRL:
+         if (record->event.pressed) {
+            ver_ctrl_active = true;
+            register_code(KC_LCTL);
+         } else {
+            ver_ctrl_active = false;
+            unregister_code(KC_LCTL);
+         }
+         return false;
+      case VER_LSFT_L3:
+         if (record->event.pressed) {
+            lsft_active = true;
+            wait_ms(10);
+            register_code(KC_LSFT);
+            layer_on(3);
+         } else {
+            layer_off(3);
+            lsft_active = false;
+            unregister_code(KC_LSFT);
+         }
+         return false;
+   }
+   return true;
 }
-
-/*
-  ╺━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╸
-
-
-                                                          ██████
-                                                            ██  ▄▄▄▄
- _                                                           ██ ██▀▀██
-                                                            ▀▀ ██▄▄██
-                                                        ██████  ▀▀▀▀
-                                                          ██ ▄▄▄▄▄▄
-                                                          ██ ██▀▀▀▀
-                                                          ██ ██████
-                                                             ██▄▄▄▄
-                                                             ▀▀▀▀▀▀
-                                                           ████████
-                                                           ██ ██ ██
-                                                           ██ ██ ██
-                                                           ▀▀ ▀▀ ▀▀
-                                                          ████████
-
-*/
