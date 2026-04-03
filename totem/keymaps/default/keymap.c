@@ -88,6 +88,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 static bool lsft_active = false;
 static bool ver_alt_active = false;
 static bool ver_alt_tab_swapped = false;
+static bool ver_alt_home_end_swapped = false;
 static bool ver_ctrl_active = false;
 static bool ver_alt_mod_active = false;
 static bool ver_alt_mod_ctrl_swapped = false;
@@ -98,26 +99,22 @@ static bool is_mac(void) {
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
    if (ver_alt_mod_active && !is_mac()) {
-      if (lsft_active) {
-         switch (keycode) {
-            case KC_LEFT:
-            case KC_RIGHT:
-            case KC_UP:
-            case KC_DOWN:
-               if (record->event.pressed) {
+      switch (keycode) {
+         case KC_LEFT:
+         case KC_RIGHT:
+            if (record->event.pressed) {
+               if (!ver_alt_mod_ctrl_swapped) {
                   unregister_code(ver_alt_mod_keycode());
                   wait_ms(10);
                   register_code(KC_LCTL);
-                  wait_ms(10);
-                  register_code(keycode);
-               } else {
-                  unregister_code(keycode);
-                  unregister_code(KC_LCTL);
-                  wait_ms(10);
-                  register_code(ver_alt_mod_keycode());
+                  ver_alt_mod_ctrl_swapped = true;
                }
-               return false;
-         }
+               wait_ms(10);
+               register_code(keycode);
+            } else {
+               unregister_code(keycode);
+            }
+            return false;
       }
       if (keycode == KC_BSPC) {
          if (record->event.pressed) {
@@ -137,42 +134,52 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
    }
 
    if (ver_alt_active && !is_mac()) {
-      uint16_t alt_remap = KC_NO;
       switch (keycode) {
-         case KC_TAB:   alt_remap = KC_TAB;   break;
-         case KC_Q:     alt_remap = KC_F4;    break;
-         case KC_LEFT:  alt_remap = KC_LEFT;  break;
-         case KC_RIGHT: alt_remap = KC_RIGHT; break;
-         case KC_UP:    alt_remap = KC_UP;    break;
-         case KC_DOWN:  alt_remap = KC_DOWN;  break;
-      }
-      if (alt_remap != KC_NO) {
-         if (lsft_active && (keycode == KC_LEFT || keycode == KC_RIGHT)) {
-            uint16_t home_end = (keycode == KC_LEFT) ? KC_HOME : KC_END;
+         case KC_LEFT:
+         case KC_RIGHT: {
+            uint16_t nav_key = (keycode == KC_LEFT) ? KC_HOME : KC_END;
             if (record->event.pressed) {
-               unregister_code(KC_LCTL);
+               if (ver_alt_tab_swapped) {
+                  unregister_code(KC_LALT);
+                  ver_alt_tab_swapped = false;
+               }
+               if (!ver_alt_home_end_swapped) {
+                  unregister_code(KC_LCTL);
+                  wait_ms(10);
+                  ver_alt_home_end_swapped = true;
+               }
                wait_ms(10);
-               register_code(home_end);
+               register_code(nav_key);
             } else {
-               unregister_code(home_end);
-               wait_ms(10);
-               register_code(KC_LCTL);
+               unregister_code(nav_key);
             }
             return false;
          }
-         if (record->event.pressed) {
-            if (!ver_alt_tab_swapped) {
-               unregister_code(KC_LCTL);
-               wait_ms(10);
-               register_code(KC_LALT);
-               ver_alt_tab_swapped = true;
+         case KC_TAB:
+         case KC_Q:
+         case KC_UP:
+         case KC_DOWN: {
+            uint16_t alt_remap = KC_NO;
+            switch (keycode) {
+               case KC_TAB: alt_remap = KC_TAB; break;
+               case KC_Q:   alt_remap = KC_F4;  break;
+               case KC_UP:  alt_remap = KC_UP;  break;
+               case KC_DOWN: alt_remap = KC_DOWN; break;
             }
-            wait_ms(10);
-            register_code(alt_remap);
-         } else {
-            unregister_code(alt_remap);
+            if (record->event.pressed) {
+               if (!ver_alt_tab_swapped) {
+                  unregister_code(KC_LCTL);
+                  wait_ms(10);
+                  register_code(KC_LALT);
+                  ver_alt_tab_swapped = true;
+               }
+               wait_ms(10);
+               register_code(alt_remap);
+            } else {
+               unregister_code(alt_remap);
+            }
+            return false;
          }
-         return false;
       }
    }
 
@@ -189,6 +196,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
          if (record->event.pressed) {
             ver_alt_active = true;
             ver_alt_tab_swapped = false;
+            ver_alt_home_end_swapped = false;
             wait_ms(10);
             register_code(ver_alt_keycode());
          } else {
@@ -198,9 +206,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                unregister_code(KC_F24);
                unregister_code(KC_LALT);
                ver_alt_tab_swapped = false;
-            } else {
+            } else if (!ver_alt_home_end_swapped) {
                unregister_code(ver_alt_keycode());
             }
+            ver_alt_home_end_swapped = false;
          }
          return false;
       case VER_ALT_MOD:
