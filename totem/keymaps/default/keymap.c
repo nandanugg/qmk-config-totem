@@ -31,18 +31,22 @@ enum custom_keycodes {
 
 #include "os_detection.h"
 
+static bool is_win_or_linux(void) {
+    return detected_host_os() == OS_WINDOWS || detected_host_os() == OS_LINUX;
+}
+
 static uint16_t ver_alt_keycode(void) {
-    if (detected_host_os() == OS_MACOS || detected_host_os() == OS_IOS) {
-        return KC_LGUI;
+    if (is_win_or_linux()) {
+        return KC_LCTL;
     }
-    return KC_LCTL;
+    return KC_LGUI;
 }
 
 static uint16_t ver_alt_mod_keycode(void) {
-    if (detected_host_os() == OS_MACOS || detected_host_os() == OS_IOS) {
-        return KC_LALT;
+    if (is_win_or_linux()) {
+        return KC_LGUI;
     }
-    return KC_LGUI;
+    return KC_LALT;
 }
 
 
@@ -93,12 +97,8 @@ static bool ver_ctrl_active = false;
 static bool ver_alt_mod_active = false;
 static bool ver_alt_mod_ctrl_swapped = false;
 
-static bool is_mac(void) {
-    return detected_host_os() == OS_MACOS || detected_host_os() == OS_IOS;
-}
-
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-   if (ver_alt_mod_active && !is_mac()) {
+   if (ver_alt_mod_active && is_win_or_linux()) {
       switch (keycode) {
          case KC_LEFT:
          case KC_RIGHT:
@@ -133,7 +133,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
       }
    }
 
-   if (ver_alt_active && !is_mac()) {
+   if (ver_alt_active && is_win_or_linux()) {
       switch (keycode) {
          case KC_LEFT:
          case KC_RIGHT: {
