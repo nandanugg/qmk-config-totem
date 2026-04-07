@@ -23,6 +23,7 @@ enum custom_keycodes {
 	VER_ALT_MOD,
 	VER_LSFT_L3,
 	VER_CTRL,
+	VER_SPACE,
 };
 
 // ┌─────────────────────────────────────────────────┐
@@ -60,7 +61,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
               KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,                      KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,
               KC_A,    KC_S,    KC_D,    KC_F,    KC_G,                      KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN,
       VER_LSFT_L3, KC_Z,    KC_X,    KC_C,    KC_V,   KC_B,       KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_ENT,
-                                 VER_CTRL, VER_ALT, KC_SPC,         KC_SPC,  MO(1),   MO(2)
+                                 VER_CTRL, VER_ALT, VER_SPACE,         KC_SPC,  MO(1),   MO(2)
     ),
 
     [1] = LAYOUT(
@@ -96,6 +97,7 @@ static bool ver_alt_home_end_swapped = false;
 static bool ver_ctrl_active = false;
 static bool ver_alt_mod_active = false;
 static bool ver_alt_mod_ctrl_swapped = false;
+static uint16_t ver_space_timer = 0;
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
    if (ver_alt_mod_active && is_win_or_linux()) {
@@ -158,13 +160,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
          case KC_TAB:
          case KC_Q:
          case KC_UP:
-         case KC_DOWN: {
+         case KC_DOWN:
+         case KC_LBRC:
+         case KC_RBRC: {
             uint16_t alt_remap = KC_NO;
             switch (keycode) {
                case KC_TAB: alt_remap = KC_TAB; break;
                case KC_Q:   alt_remap = KC_F4;  break;
                case KC_UP:  alt_remap = KC_UP;  break;
                case KC_DOWN: alt_remap = KC_DOWN; break;
+               case KC_LBRC: alt_remap = KC_LEFT; break;
+               case KC_RBRC: alt_remap = KC_RIGHT; break;
             }
             if (record->event.pressed) {
                if (!ver_alt_tab_swapped) {
@@ -185,14 +191,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
    switch (keycode) {
       case VER_ALT:
-         if (ver_ctrl_active) {
-            if (record->event.pressed) {
-               register_code(KC_LALT);
-            } else {
-               unregister_code(KC_LALT);
-            }
-            return false;
-         }
          if (record->event.pressed) {
             ver_alt_active = true;
             ver_alt_tab_swapped = false;
@@ -235,6 +233,17 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
          } else {
             ver_ctrl_active = false;
             unregister_code(KC_LCTL);
+         }
+         return false;
+      case VER_SPACE:
+         if (record->event.pressed) {
+            ver_space_timer = timer_read();
+            register_code(KC_LALT);
+         } else {
+            unregister_code(KC_LALT);
+            if (timer_elapsed(ver_space_timer) < 200) {
+               tap_code(KC_SPC);
+            }
          }
          return false;
       case VER_LSFT_L3:
