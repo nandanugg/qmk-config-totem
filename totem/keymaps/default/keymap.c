@@ -155,24 +155,32 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             }
             return false;
          }
-         case KC_TAB:
-         case KC_Q:
          case KC_UP:
-         case KC_DOWN:
-         case KC_LBRC:
-         case KC_RBRC: {
-            uint16_t alt_remap = KC_NO;
-            switch (keycode) {
-               case KC_TAB: alt_remap = KC_TAB; break;
-               case KC_Q:   alt_remap = KC_F4;  break;
-               case KC_UP:  alt_remap = KC_UP;  break;
-               case KC_DOWN: alt_remap = KC_DOWN; break;
-               case KC_LBRC: alt_remap = KC_LEFT; break;
-               case KC_RBRC: alt_remap = KC_RIGHT; break;
+         case KC_DOWN: {
+            uint16_t nav_key = (keycode == KC_UP) ? KC_HOME : KC_END;
+            if (record->event.pressed) {
+               if (ver_alt_tab_swapped) {
+                  unregister_code(KC_LALT);
+                  ver_alt_tab_swapped = false;
+               }
+               if (ver_alt_home_end_swapped) {
+                  register_code(KC_LCTL);
+                  wait_ms(10);
+                  ver_alt_home_end_swapped = false;
+               }
+               wait_ms(10);
+               register_code(nav_key);
+            } else {
+               unregister_code(nav_key);
             }
+            return false;
+         }
+         case KC_TAB:
+         case KC_Q: {
+            uint16_t alt_remap = (keycode == KC_TAB) ? KC_TAB : KC_F4;
             if (record->event.pressed) {
                if (!ver_alt_tab_swapped) {
-                  unregister_code(KC_LCTL);
+                  if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
                   wait_ms(10);
                   register_code(KC_LALT);
                   ver_alt_tab_swapped = true;
@@ -183,6 +191,89 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                unregister_code(alt_remap);
             }
             return false;
+         }
+         case KC_BSPC: {
+            if (record->event.pressed) {
+               if (ver_alt_tab_swapped) {
+                  unregister_code(KC_LALT);
+                  ver_alt_tab_swapped = false;
+               }
+               if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
+               wait_ms(10);
+               register_code(KC_LSFT);
+               tap_code(KC_HOME);
+               unregister_code(KC_LSFT);
+               wait_ms(10);
+               tap_code(KC_BSPC);
+               if (!ver_alt_home_end_swapped) {
+                  wait_ms(10);
+                  register_code(KC_LCTL);
+               }
+            }
+            return false;
+         }
+         case KC_SPC: {
+            if (record->event.pressed) {
+               if (ver_alt_tab_swapped) {
+                  unregister_code(KC_LALT);
+                  ver_alt_tab_swapped = false;
+               }
+               if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
+               wait_ms(10);
+               register_code(KC_LGUI);
+               tap_code(KC_S);
+               unregister_code(KC_LGUI);
+               if (!ver_alt_home_end_swapped) {
+                  wait_ms(10);
+                  register_code(KC_LCTL);
+               }
+            }
+            return false;
+         }
+         case KC_LBRC:
+         case KC_RBRC: {
+            bool is_shift = get_mods() & MOD_MASK_SHIFT;
+            if (is_shift) {
+               if (record->event.pressed) {
+                  if (ver_alt_tab_swapped) {
+                     unregister_code(KC_LALT);
+                     ver_alt_tab_swapped = false;
+                  }
+                  if (ver_alt_home_end_swapped) {
+                     register_code(KC_LCTL);
+                     ver_alt_home_end_swapped = false;
+                     wait_ms(10);
+                  }
+                  if (keycode == KC_RBRC) { // Ctrl + Tab (Next Tab)
+                     uint8_t saved_mods = get_mods();
+                     del_mods(MOD_MASK_SHIFT);
+                     send_keyboard_report();
+                     wait_ms(10);
+                     tap_code(KC_TAB);
+                     set_mods(saved_mods);
+                     send_keyboard_report();
+                  } else { // Ctrl + Shift + Tab (Prev Tab)
+                     tap_code(KC_TAB);
+                  }
+               }
+               return false;
+            } else {
+               // Back/Forward (Alt + Left/Right)
+               uint16_t alt_remap = (keycode == KC_LBRC) ? KC_LEFT : KC_RIGHT;
+               if (record->event.pressed) {
+                  if (!ver_alt_tab_swapped) {
+                     if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
+                     wait_ms(10);
+                     register_code(KC_LALT);
+                     ver_alt_tab_swapped = true;
+                  }
+                  wait_ms(10);
+                  register_code(alt_remap);
+               } else {
+                  unregister_code(alt_remap);
+               }
+               return false;
+            }
          }
       }
    }
@@ -224,14 +315,30 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
              }
           }
           return false;
-       case VER_SPACE:
-          if (record->event.pressed) {
+      case VER_SPACE:
+         if (record->event.pressed) {
             ver_space_timer = timer_read();
             register_code(KC_LALT);
          } else {
             unregister_code(KC_LALT);
             if (timer_elapsed(ver_space_timer) < 200) {
-               tap_code(KC_SPC);
+               if (ver_alt_active && is_win_or_linux()) {
+                  if (ver_alt_tab_swapped) {
+                     unregister_code(KC_LALT);
+                     ver_alt_tab_swapped = false;
+                  }
+                  if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
+                  wait_ms(10);
+                  register_code(KC_LGUI);
+                  tap_code(KC_S);
+                  unregister_code(KC_LGUI);
+                  if (!ver_alt_home_end_swapped) {
+                     wait_ms(10);
+                     register_code(KC_LCTL);
+                  }
+               } else {
+                  tap_code(KC_SPC);
+               }
             }
          }
          return false;
