@@ -44,6 +44,8 @@ static uint16_t ver_alt_keycode(void) {
 
 static uint16_t ver_alt_mod_keycode(void) {
     if (is_win_or_linux()) {
+        // On Windows/Linux this helper starts as GUI, but some combos below
+        // temporarily swap it to Ctrl so one thumb key can cover both roles.
         return KC_LGUI;
     }
     return KC_LALT;
@@ -99,31 +101,37 @@ static uint16_t ver_space_timer = 0;
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
    if (ver_alt_mod_active && is_win_or_linux()) {
+      // While VER_ALT_MOD is held on Windows/Linux, re-map a few keys to the
+      // Ctrl-based editing shortcuts that are commonly used there.
       switch (keycode) {
-         case KC_LEFT:
-         case KC_RIGHT:
-            if (record->event.pressed) {
-               if (!ver_alt_mod_ctrl_swapped) {
-                  unregister_code(ver_alt_mod_keycode());
-                  wait_ms(10);
-                  register_code(KC_LCTL);
-                  ver_alt_mod_ctrl_swapped = true;
-               }
+          case KC_LEFT:
+          case KC_RIGHT:
+             if (record->event.pressed) {
+                if (!ver_alt_mod_ctrl_swapped) {
+                   // VER_ALT_MOD started as GUI on Windows/Linux. Swap that held
+                   // modifier to Ctrl once so left/right becomes Ctrl+Arrow.
+                   unregister_code(ver_alt_mod_keycode());
+                   wait_ms(10);
+                   register_code(KC_LCTL);
+                   ver_alt_mod_ctrl_swapped = true;
+                }
                wait_ms(10);
                register_code(keycode);
             } else {
                unregister_code(keycode);
             }
             return false;
-      }
-      if (keycode == KC_BSPC) {
-         if (record->event.pressed) {
-            if (!ver_alt_mod_ctrl_swapped) {
-               unregister_code(ver_alt_mod_keycode());
-               wait_ms(10);
-               register_code(KC_LCTL);
-               ver_alt_mod_ctrl_swapped = true;
-            }
+       }
+       if (keycode == KC_BSPC) {
+          if (record->event.pressed) {
+             if (!ver_alt_mod_ctrl_swapped) {
+                // Same modifier swap as above, but for Ctrl+Backspace to delete
+                // the previous word on Windows/Linux.
+                unregister_code(ver_alt_mod_keycode());
+                wait_ms(10);
+                register_code(KC_LCTL);
+                ver_alt_mod_ctrl_swapped = true;
+             }
             wait_ms(10);
             register_code(KC_BSPC);
          } else {
@@ -134,54 +142,69 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
    }
 
    if (ver_alt_active && is_win_or_linux()) {
+      // While VER_ALT is held on Windows/Linux, emulate the navigation and app
+      // management shortcuts that would normally live under Command on macOS.
       switch (keycode) {
-         case KC_LEFT:
-         case KC_RIGHT: {
-            uint16_t nav_key = (keycode == KC_LEFT) ? KC_HOME : KC_END;
-            if (record->event.pressed) {
-               if (ver_alt_tab_swapped) {
-                  unregister_code(KC_LALT);
-                  ver_alt_tab_swapped = false;
-               }
-               if (!ver_alt_home_end_swapped) {
-                  unregister_code(KC_LCTL);
-                  wait_ms(10);
-                  ver_alt_home_end_swapped = true;
-               }
+          case KC_LEFT:
+          case KC_RIGHT: {
+             // Left/Right jump to start/end of line by converting the held
+             // Ctrl modifier into Home/End.
+             uint16_t nav_key = (keycode == KC_LEFT) ? KC_HOME : KC_END;
+             if (record->event.pressed) {
+                if (ver_alt_tab_swapped) {
+                   // If we were in Alt+Tab mode, leave it before switching to
+                   // line navigation to avoid mixing modifiers.
+                   unregister_code(KC_LALT);
+                   ver_alt_tab_swapped = false;
+                }
+                if (!ver_alt_home_end_swapped) {
+                   // VER_ALT starts as Ctrl on Windows/Linux. Home/End should be
+                   // sent without Ctrl, so release it until this navigation mode
+                   // is over.
+                   unregister_code(KC_LCTL);
+                   wait_ms(10);
+                   ver_alt_home_end_swapped = true;
+                }
                wait_ms(10);
                register_code(nav_key);
             } else {
                unregister_code(nav_key);
             }
-            return false;
-         }
-         case KC_UP:
-         case KC_DOWN: {
-            uint16_t nav_key = (keycode == KC_UP) ? KC_HOME : KC_END;
-            if (record->event.pressed) {
-               if (ver_alt_tab_swapped) {
-                  unregister_code(KC_LALT);
-                  ver_alt_tab_swapped = false;
-               }
-               if (ver_alt_home_end_swapped) {
-                  register_code(KC_LCTL);
-                  wait_ms(10);
-                  ver_alt_home_end_swapped = false;
-               }
+             return false;
+          }
+          case KC_UP:
+          case KC_DOWN: {
+             // Up/Down also map to Home/End here. Unlike left/right, this path
+             // restores Ctrl if it had been released earlier.
+             uint16_t nav_key = (keycode == KC_UP) ? KC_HOME : KC_END;
+             if (record->event.pressed) {
+                if (ver_alt_tab_swapped) {
+                   unregister_code(KC_LALT);
+                   ver_alt_tab_swapped = false;
+                }
+                if (ver_alt_home_end_swapped) {
+                   // Put Ctrl back before sending the key so the held modifier
+                   // returns to its default VER_ALT state after home/end usage.
+                   register_code(KC_LCTL);
+                   wait_ms(10);
+                   ver_alt_home_end_swapped = false;
+                }
                wait_ms(10);
                register_code(nav_key);
             } else {
                unregister_code(nav_key);
             }
-            return false;
-         }
-         case KC_TAB:
-         case KC_Q: {
-            uint16_t alt_remap = (keycode == KC_TAB) ? KC_TAB : KC_F4;
-            if (record->event.pressed) {
-               if (!ver_alt_tab_swapped) {
-                  if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
-                  wait_ms(10);
+             return false;
+          }
+          case KC_TAB:
+          case KC_Q: {
+             // VER_ALT+Tab becomes Alt+Tab, and VER_ALT+Q becomes Alt+F4.
+             // Both are Windows-style window switching / closing shortcuts.
+             uint16_t alt_remap = (keycode == KC_TAB) ? KC_TAB : KC_F4;
+             if (record->event.pressed) {
+                if (!ver_alt_tab_swapped) {
+                   if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
+                   wait_ms(10);
                   register_code(KC_LALT);
                   ver_alt_tab_swapped = true;
                }
@@ -190,51 +213,54 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             } else {
                unregister_code(alt_remap);
             }
-            return false;
-         }
-         case KC_BSPC: {
-            if (record->event.pressed) {
-               if (ver_alt_tab_swapped) {
+             return false;
+          }
+          case KC_BSPC: {
+             if (record->event.pressed) {
+                if (ver_alt_tab_swapped) {
                   unregister_code(KC_LALT);
                   ver_alt_tab_swapped = false;
-               }
-               if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
-               wait_ms(10);
-               register_code(KC_LSFT);
-               tap_code(KC_HOME);
-               unregister_code(KC_LSFT);
-               wait_ms(10);
-               tap_code(KC_BSPC);
+                }
+                if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
+                wait_ms(10);
+                // Shift+Home selects from the cursor to the start of the line,
+                // then Backspace deletes that selection.
+                register_code(KC_LSFT);
+                tap_code(KC_HOME);
+                unregister_code(KC_LSFT);
+                wait_ms(10);
+                tap_code(KC_BSPC);
                if (!ver_alt_home_end_swapped) {
                   wait_ms(10);
                   register_code(KC_LCTL);
                }
             }
-            return false;
-         }
-         case KC_SPC: {
-            if (record->event.pressed) {
-               if (ver_alt_tab_swapped) {
+             return false;
+          }
+          case KC_SPC: {
+             if (record->event.pressed) {
+                if (ver_alt_tab_swapped) {
                   unregister_code(KC_LALT);
                   ver_alt_tab_swapped = false;
-               }
-               if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
-               wait_ms(10);
-               register_code(KC_LGUI);
-               tap_code(KC_S);
-               unregister_code(KC_LGUI);
-               if (!ver_alt_home_end_swapped) {
+                }
+                if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
+                wait_ms(10);
+                // Open Windows search/start search with Win+S.
+                register_code(KC_LGUI);
+                tap_code(KC_S);
+                unregister_code(KC_LGUI);
+                if (!ver_alt_home_end_swapped) {
                   wait_ms(10);
                   register_code(KC_LCTL);
                }
             }
             return false;
-         }
-         case KC_LBRC:
-         case KC_RBRC: {
-            bool is_shift = get_mods() & MOD_MASK_SHIFT;
-            if (is_shift) {
-               if (record->event.pressed) {
+          }
+          case KC_LBRC:
+          case KC_RBRC: {
+             bool is_shift = get_mods() & MOD_MASK_SHIFT;
+             if (is_shift) {
+                if (record->event.pressed) {
                   if (ver_alt_tab_swapped) {
                      unregister_code(KC_LALT);
                      ver_alt_tab_swapped = false;
@@ -243,26 +269,31 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                      register_code(KC_LCTL);
                      ver_alt_home_end_swapped = false;
                      wait_ms(10);
-                  }
-                  if (keycode == KC_RBRC) { // Ctrl + Tab (Next Tab)
-                     uint8_t saved_mods = get_mods();
-                     del_mods(MOD_MASK_SHIFT);
-                     send_keyboard_report();
-                     wait_ms(10);
-                     tap_code(KC_TAB);
-                     set_mods(saved_mods);
-                     send_keyboard_report();
-                  } else { // Ctrl + Shift + Tab (Prev Tab)
-                     tap_code(KC_TAB);
-                  }
-               }
-               return false;
-            } else {
-               // Back/Forward (Alt + Left/Right)
-               uint16_t alt_remap = (keycode == KC_LBRC) ? KC_LEFT : KC_RIGHT;
-               if (record->event.pressed) {
-                  if (!ver_alt_tab_swapped) {
-                     if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
+                   }
+                   if (keycode == KC_RBRC) { // Ctrl + Tab (Next Tab)
+                      // If Shift is physically held, clear it temporarily so the
+                      // sent shortcut stays Ctrl+Tab instead of Ctrl+Shift+Tab.
+                      uint8_t saved_mods = get_mods();
+                      del_mods(MOD_MASK_SHIFT);
+                      send_keyboard_report();
+                      wait_ms(10);
+                      tap_code(KC_TAB);
+                      set_mods(saved_mods);
+                      send_keyboard_report();
+                   } else { // Ctrl + Shift + Tab (Prev Tab)
+                      // Here we keep Shift so the same gesture moves to the
+                      // previous browser/editor tab.
+                      tap_code(KC_TAB);
+                   }
+                }
+                return false;
+             } else {
+                // Without Shift, [ and ] act like browser history back/forward
+                // by switching the held modifier to Alt and sending arrows.
+                uint16_t alt_remap = (keycode == KC_LBRC) ? KC_LEFT : KC_RIGHT;
+                if (record->event.pressed) {
+                   if (!ver_alt_tab_swapped) {
+                      if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
                      wait_ms(10);
                      register_code(KC_LALT);
                      ver_alt_tab_swapped = true;
@@ -279,33 +310,39 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
    }
 
    switch (keycode) {
-      case VER_ALT:
-         if (record->event.pressed) {
-            ver_alt_active = true;
-            ver_alt_tab_swapped = false;
-            ver_alt_home_end_swapped = false;
-            wait_ms(10);
-            register_code(ver_alt_keycode());
-         } else {
-            ver_alt_active = false;
-            if (ver_alt_tab_swapped) {
-               register_code(KC_F24);
-               unregister_code(KC_F24);
-               unregister_code(KC_LALT);
-               ver_alt_tab_swapped = false;
-            } else if (!ver_alt_home_end_swapped) {
+       case VER_ALT:
+          if (record->event.pressed) {
+             // Pressing VER_ALT starts the platform-specific primary modifier:
+             // Ctrl on Windows/Linux, Command on macOS.
+             ver_alt_active = true;
+             ver_alt_tab_swapped = false;
+             ver_alt_home_end_swapped = false;
+             wait_ms(10);
+             register_code(ver_alt_keycode());
+          } else {
+             ver_alt_active = false;
+             if (ver_alt_tab_swapped) {
+                // After Alt+Tab on Windows, send a harmless key before releasing
+                // Alt so the OS reliably exits the app switcher state.
+                register_code(KC_F24);
+                unregister_code(KC_F24);
+                unregister_code(KC_LALT);
+                ver_alt_tab_swapped = false;
+             } else if (!ver_alt_home_end_swapped) {
                unregister_code(ver_alt_keycode());
             }
             ver_alt_home_end_swapped = false;
          }
-         return false;
-      case VER_ALT_MOD:
-         if (record->event.pressed) {
-            ver_alt_mod_active = true;
-            ver_alt_mod_ctrl_swapped = false;
-            wait_ms(10);
-            register_code(ver_alt_mod_keycode());
-         } else {
+          return false;
+       case VER_ALT_MOD:
+          if (record->event.pressed) {
+             // Secondary modifier thumb key: Alt on macOS, GUI on Windows/Linux,
+             // with special Ctrl-based edits handled in the block above.
+             ver_alt_mod_active = true;
+             ver_alt_mod_ctrl_swapped = false;
+             wait_ms(10);
+             register_code(ver_alt_mod_keycode());
+          } else {
             ver_alt_mod_active = false;
             if (ver_alt_mod_ctrl_swapped) {
                unregister_code(KC_LCTL);
@@ -315,24 +352,28 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
              }
           }
           return false;
-      case VER_SPACE:
-         if (record->event.pressed) {
-            ver_space_timer = timer_read();
-            register_code(KC_LALT);
-         } else {
-            unregister_code(KC_LALT);
-            if (timer_elapsed(ver_space_timer) < 200) {
-               if (ver_alt_active && is_win_or_linux()) {
+       case VER_SPACE:
+          if (record->event.pressed) {
+             // Hold for Left Alt, tap for Space. The quick-tap behavior below has
+             // one extra Windows/Linux shortcut when VER_ALT is also held.
+             ver_space_timer = timer_read();
+             register_code(KC_LALT);
+          } else {
+             unregister_code(KC_LALT);
+             if (timer_elapsed(ver_space_timer) < 300) {
+                if (ver_alt_active && is_win_or_linux()) {
                   if (ver_alt_tab_swapped) {
                      unregister_code(KC_LALT);
                      ver_alt_tab_swapped = false;
-                  }
-                  if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
-                  wait_ms(10);
-                  register_code(KC_LGUI);
-                  tap_code(KC_S);
-                  unregister_code(KC_LGUI);
-                  if (!ver_alt_home_end_swapped) {
+                   }
+                   if (!ver_alt_home_end_swapped) unregister_code(KC_LCTL);
+                   wait_ms(10);
+                   // VER_ALT + VER_SPACE quick-tap also opens Win+S on
+                   // Windows/Linux, matching the dedicated SPC case above.
+                   register_code(KC_LGUI);
+                   tap_code(KC_S);
+                   unregister_code(KC_LGUI);
+                   if (!ver_alt_home_end_swapped) {
                      wait_ms(10);
                      register_code(KC_LCTL);
                   }
