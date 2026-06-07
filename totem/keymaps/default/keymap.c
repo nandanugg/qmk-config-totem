@@ -12,6 +12,7 @@
 */
 
 #include QMK_KEYBOARD_H
+#include "gpio.h"
 
 // ┌─────────────────────────────────────────────────┐
 // │ d e f i n e   k e y c o d e s                   │
@@ -23,6 +24,8 @@ enum custom_keycodes {
 	VER_ALT_MOD,
 	VER_LSFT_L3,
 	VER_SPACE,
+	GAME_MO1,
+	GAME_MO2,
 };
 
 // ┌─────────────────────────────────────────────────┐
@@ -51,39 +54,141 @@ static uint16_t ver_alt_mod_keycode(void) {
     return KC_LALT;
 }
 
+#ifdef RGBLIGHT_ENABLE
+void keyboard_pre_init_user(void) {
+    // The Seeed XIAO RP2040 onboard NeoPixel needs its power pin enabled.
+    gpio_set_pin_output(GP11);
+    gpio_write_pin_high(GP11);
+}
+
+void keyboard_post_init_user(void) {
+    rgblight_enable_noeeprom();
+    rgblight_mode_noeeprom(RGBLIGHT_MODE_STATIC_LIGHT);
+    rgblight_sethsv_noeeprom(HSV_OFF);
+}
+
+layer_state_t layer_state_set_user(layer_state_t state) {
+    if (layer_state_cmp(state, 4)) {
+        rgblight_sethsv_noeeprom(HSV_RED);
+    } else {
+        rgblight_sethsv_noeeprom(HSV_OFF);
+    }
+
+    return state;
+}
+#endif
+
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 // │ K E Y M A P S                                                                                                          │
 // └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 // ▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘
 
+static bool gaming_shift_active = false;
+static bool gaming_ctrl_active = false;
+static uint8_t gaming_suppressed_key_count = 0;
+static uint8_t gaming_suppressed_mods = 0;
+static bool gaming_restore_mods_after_record = false;
+static bool gaming_mo_active = false;
+
+static void update_gaming_mod_layer(void) {
+   if (layer_state_is(4) && gaming_shift_active && gaming_ctrl_active) {
+      layer_on(5);
+   } else {
+      layer_off(5);
+   }
+}
+
+static bool is_gaming_mod_key(uint16_t keycode) {
+   switch (keycode) {
+      case KC_LSFT:
+      case KC_RSFT:
+      case VER_LSFT_L3:
+      case KC_LCTL:
+      case KC_RCTL:
+         return true;
+   }
+
+   return false;
+}
+
+static void restore_gaming_mods(void) {
+   uint8_t mods_to_restore = 0;
+
+   if (gaming_shift_active) {
+      mods_to_restore |= gaming_suppressed_mods & MOD_MASK_SHIFT;
+   }
+   if (gaming_ctrl_active) {
+      mods_to_restore |= gaming_suppressed_mods & MOD_MASK_CTRL;
+   }
+   if (mods_to_restore) {
+      add_mods(mods_to_restore);
+      send_keyboard_report();
+   }
+
+   gaming_suppressed_mods = 0;
+}
+
+enum combo_events {
+   GAMING_LAYER_TOGGLE,
+};
+
+const uint16_t PROGMEM gaming_layer_combo[] = {KC_COMM, KC_DOT, KC_SLSH, COMBO_END};
+
+combo_t key_combos[] = {
+   [GAMING_LAYER_TOGGLE] = COMBO_ACTION(gaming_layer_combo),
+};
+
+void process_combo_event(uint16_t combo_index, bool pressed) {
+   switch (combo_index) {
+      case GAMING_LAYER_TOGGLE:
+         if (pressed) {
+            layer_invert(4);
+            update_gaming_mod_layer();
+         }
+         break;
+   }
+}
+
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
-[0] = LAYOUT(
-              KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,                      KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,
-              KC_A,    KC_S,    KC_D,    KC_F,    KC_G,                      KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN,
-      VER_LSFT_L3, KC_Z,    KC_X,    KC_C,    KC_V,   KC_B,       KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_ENT,
-                                 KC_LCTL, VER_ALT, VER_SPACE,         KC_SPC,  MO(1),   MO(2)
-    ),
+   [0] = LAYOUT(
+                   KC_Q, KC_W,    KC_E,    KC_R,     KC_T,           KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,
+                   KC_A, KC_S,    KC_D,    KC_F,     KC_G,           KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN,
+      VER_LSFT_L3, KC_Z, KC_X,    KC_C,    KC_V,     KC_B,           KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_ENT,
+                         KC_LCTL, VER_ALT, VER_SPACE,                KC_SPC,  MO(1),   MO(2)
+   ),
 
-    [1] = LAYOUT(
-              KC_ESC,  KC_1,    KC_2,    KC_3,    KC_0,                      KC_LPRN, KC_RPRN, KC_LBRC, KC_RBRC, KC_BSPC,
-              KC_TAB,  KC_4,    KC_5,    KC_6,    _______,                   KC_LEFT, KC_DOWN, KC_UP,   KC_RIGHT, KC_QUOT,
-      _______, _______, KC_7,    KC_8,    KC_9,    _______,                   _______, _______, _______, _______, _______, KC_BSLS,
-                                 _______, _______, _______,           _______, _______, _______
-    ),
+   [1] = LAYOUT(
+                   KC_ESC,  KC_1,    KC_2,    KC_3,    KC_0,               KC_LPRN, KC_RPRN, KC_LBRC, KC_RBRC,  KC_BSPC,
+                   KC_TAB,  KC_4,    KC_5,    KC_6,    _______,            KC_LEFT, KC_DOWN, KC_UP,   KC_RIGHT, KC_QUOT,
+          _______, _______, KC_7,    KC_8,    KC_9,    _______,            _______, _______, _______, _______, _______, KC_BSLS,
+                            _______, _______, _______,                     _______, _______, _______
+   ),
 
-    [2] = LAYOUT(
-              KC_GRV,  KC_F1,   KC_F2,   KC_F3,   KC_F10,                     KC_MPLY, KC_MSTP, KC_MINUS, KC_EQL,  KC_DEL,
-              _______, KC_F4,   KC_F5,   KC_F6,   KC_F11,                     KC_HOME, KC_PGDN, KC_PGUP,  KC_END,  _______,
-      _______, _______, KC_F7,   KC_F8,   KC_F9,   KC_F12,                     _______, _______, _______, _______, _______, _______,
-                                 _______, _______, _______,            _______, _______, _______
-    ),
-    [3] = LAYOUT(
-            _______,  _______,  _______,  _______,  _______,    _______, _______,   _______, _______,  _______,
-                      _______,  _______,  _______,  _______,  _______,    _______, _______,   _______, _______,  _______,
-        _______,          _______,  _______,  _______,  _______,  _______,    _______, _______,   _______, _______,  _______,   _______,
-                                              _______,  VER_ALT_MOD,  VER_ALT,   _______,  _______,   _______
-    ),
+   [2] = LAYOUT(
+                   KC_GRV,  KC_F1,   KC_F2,   KC_F3,   KC_F10,             KC_MPLY, KC_MSTP, KC_MINUS, KC_EQL,  KC_DEL,
+                   _______, KC_F4,   KC_F5,   KC_F6,   KC_F11,             KC_HOME, KC_PGDN, KC_PGUP,  KC_END, _______,
+          _______, _______, KC_F7,   KC_F8,   KC_F9,   KC_F12,             _______, _______, _______, _______, _______, _______,
+                                     _______, _______, _______,            _______, _______, _______
+   ),
+   [3] = LAYOUT(
+                   _______,  _______,  _______,  _______,     _______,    _______, _______,   _______, _______,  _______,
+                   _______,  _______,  _______,  _______,     _______,    _______, _______,   _______, _______,  _______,
+          _______, _______,  _______,  _______,  _______,     _______,    _______, _______,   _______, _______,  _______,   _______,
+                                       _______,  VER_ALT_MOD,  VER_ALT,   _______, _______,   _______
+   ),
+   [4] = LAYOUT(
+               KC_GRV, KC_Q,    KC_W,    KC_E,   KC_R,           KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,
+               KC_TAB, KC_A,    KC_S,    KC_D,   KC_F,           KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN,
+      KC_LSFT, KC_Z,   KC_X,    KC_C,    KC_V,   KC_B,           KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_ENT,
+                       KC_LCTL, KC_LALT, KC_SPC,                 KC_SPC,  GAME_MO1, GAME_MO2
+   ),
+   [5] = LAYOUT(
+               KC_ESC, KC_1,    KC_2,    KC_3,   KC_R,           KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,
+               KC_TAB, KC_4,    KC_5,    KC_6,   KC_F,           KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN,
+      KC_LSFT, KC_Z,   KC_X,    KC_C,    KC_V,   KC_B,           KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_ENT,
+                       KC_LCTL, KC_LALT, KC_SPC,                 KC_SPC,  GAME_MO1, GAME_MO2
+   ),
 };
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -100,6 +205,52 @@ static bool ver_alt_mod_ctrl_swapped = false;
 static uint16_t ver_space_timer = 0;
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+   bool gaming_mod_key = is_gaming_mod_key(keycode);
+
+   switch (keycode) {
+      case KC_LSFT:
+      case KC_RSFT:
+      case VER_LSFT_L3:
+         gaming_shift_active = record->event.pressed;
+         update_gaming_mod_layer();
+         break;
+      case KC_LCTL:
+      case KC_RCTL:
+         gaming_ctrl_active = record->event.pressed;
+         update_gaming_mod_layer();
+         break;
+      case GAME_MO1:
+      case GAME_MO2:
+         if (record->event.pressed) {
+            gaming_mo_active = true;
+            layer_off(5);
+            layer_off(4);
+            layer_on(keycode == GAME_MO1 ? 1 : 2);
+         } else {
+            layer_off(keycode == GAME_MO1 ? 1 : 2);
+            layer_on(4);
+            gaming_mo_active = false;
+            update_gaming_mod_layer();
+         }
+         return false;
+   }
+
+   if (!gaming_mod_key && !gaming_mo_active) {
+      if (record->event.pressed && layer_state_is(5)) {
+         if (gaming_suppressed_key_count == 0) {
+            gaming_suppressed_mods = get_mods() & (MOD_MASK_SHIFT | MOD_MASK_CTRL);
+            del_mods(MOD_MASK_SHIFT | MOD_MASK_CTRL);
+            send_keyboard_report();
+         }
+         gaming_suppressed_key_count++;
+      } else if (!record->event.pressed && gaming_suppressed_key_count > 0) {
+         gaming_suppressed_key_count--;
+         if (gaming_suppressed_key_count == 0) {
+            gaming_restore_mods_after_record = true;
+         }
+      }
+   }
+
    if (ver_alt_mod_active && is_win_or_linux()) {
       // While VER_ALT_MOD is held on Windows/Linux, re-map a few keys to the
       // Ctrl-based editing shortcuts that are commonly used there.
@@ -397,4 +548,11 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
          return false;
    }
    return true;
+}
+
+void post_process_record_user(uint16_t keycode, keyrecord_t *record) {
+   if (gaming_restore_mods_after_record) {
+      gaming_restore_mods_after_record = false;
+      restore_gaming_mods();
+   }
 }
