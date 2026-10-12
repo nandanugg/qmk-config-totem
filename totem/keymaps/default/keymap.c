@@ -69,7 +69,9 @@ void keyboard_post_init_user(void) {
 }
 
 layer_state_t layer_state_set_user(layer_state_t state) {
-    if (layer_state_cmp(state, 4)) {
+    if (layer_state_cmp(state, 5)) {
+        rgblight_sethsv_noeeprom(HSV_YELLOW);
+    } else if (layer_state_cmp(state, 4)) {
         rgblight_sethsv_noeeprom(HSV_RED);
     } else {
         rgblight_sethsv_noeeprom(HSV_OFF);
@@ -113,7 +115,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
    [2] = LAYOUT(
                    KC_GRV,  KC_F1,   KC_F2,   KC_F3,   KC_F10,             KC_BRID, KC_BRIU, KC_MINUS, KC_EQL,  KC_DEL,
-                   _______, KC_F4,   KC_F5,   KC_F6,   KC_F11,             KC_HOME, KC_PGDN, KC_PGUP,  KC_END,  _______,
+                   _______, KC_F4,   KC_F5,   KC_F6,   KC_F11,             KC_HOME, KC_PGDN, KC_PGUP,  KC_END,  KC_INS,
           _______, _______, KC_F7,   KC_F8,   KC_F9,   KC_F12,             KC_MPLY, KC_VOLD, KC_VOLU,  KC_MPRV, KC_MNXT, _______,
                                      _______, _______, _______,            _______, _______, _______
    ),
@@ -159,6 +161,19 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
    // yet, treat GAME_CTRL purely as a layer key and cancel its pending Ctrl.
    if (record->event.pressed && keycode != GAME_CTRL && game_ctrl_down && !game_ctrl_held) {
       game_ctrl_interrupted = true;
+   }
+
+   // Once the held Ctrl has engaged, Shift toggles between gaming layer 4 and 5
+   // (Ctrl stays down). LED follows: red for layer 4, yellow for layer 5.
+   if (game_ctrl_held && (keycode == KC_LSFT || keycode == KC_RSFT)) {
+      if (record->event.pressed) {
+         if (layer_state_is(5)) {
+            layer_off(5);
+         } else {
+            layer_on(5);
+         }
+      }
+      return false;
    }
 
    switch (keycode) {
@@ -459,7 +474,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
          }
          return false;
       case GAME_CTRL:
-         // Tap (<400ms, no layer-5 key) = Ctrl tap. Hold alone >=400ms = hold
+         // Tap (<350ms, no layer-5 key) = Ctrl tap. Hold alone >=350ms = hold
          // Ctrl (engaged in housekeeping_task_user). Press a layer-5 key while
          // held = layer access, Ctrl dismissed.
          if (record->event.pressed) {
@@ -474,7 +489,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (game_ctrl_held) {
                unregister_code(KC_LCTL);
                game_ctrl_held = false;
-            } else if (!game_ctrl_interrupted && timer_elapsed(game_ctrl_timer) < 400) {
+            } else if (!game_ctrl_interrupted && timer_elapsed(game_ctrl_timer) < 350) {
                tap_code(KC_LCTL);
             }
          }
@@ -496,9 +511,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 }
 
 void housekeeping_task_user(void) {
-   // Engage a real held Ctrl once GAME_CTRL has been held alone for >=400ms.
+   // Engage a real held Ctrl once GAME_CTRL has been held alone for >=350ms.
    if (game_ctrl_down && !game_ctrl_held && !game_ctrl_interrupted
-       && timer_elapsed(game_ctrl_timer) >= 400) {
+       && timer_elapsed(game_ctrl_timer) >= 350) {
       register_code(KC_LCTL);
       game_ctrl_held = true;
    }
